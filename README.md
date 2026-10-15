@@ -48,6 +48,9 @@ indicates that the board is validating the received image.
 
 ## Reuse OtaWeb in another ESP-IDF project
 
+For step-by-step integration instructions, see
+[Use OtaWeb in a custom application](components/OtaWeb/README.md).
+
 Copy `components/OtaWeb` into your project's `components/` directory and add
 `REQUIRES OtaWeb` to the component that calls it. Initialize your networking first,
 then call:
