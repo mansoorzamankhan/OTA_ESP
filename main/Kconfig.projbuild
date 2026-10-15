@@ -1,0 +1,8 @@
+menu "Local web OTA"
+config OTA_WIFI_SSID
+    string "Device Wi-Fi access point name (1..32 bytes)"
+    default "ESP32-OTA"
+config OTA_WIFI_PASSWORD
+    string "Device Wi-Fi password (8..63 characters)"
+    default "esp32ota123"
+endmenu
