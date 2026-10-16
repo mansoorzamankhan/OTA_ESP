@@ -8,6 +8,15 @@ Built with **ESP-IDF 5.5.1 on ESP32-S3**. The application owns NVS and networkin
 Use either a device Wi-Fi access point or a connection to an existing router.
 No BLE or external component downloads are required.
 
+## Select web OTA in this sample
+
+Open `idf.py menuconfig` and select **OTA application > OTA implementation >
+Wi-Fi web server OTA (browser)**. Set the Wi-Fi name and password in the same
+menu. This selects `WebServer_OTA` in the application enum and compiles
+`main/main_web.c` and OtaWeb. BLE startup and OtaBle sources are excluded.
+When copying OtaWeb into another project, this sample's menu and enum are optional;
+your application can call `ota_web_start()` directly as described below.
+
 ## 1. Copy the component
 
 Copy this entire directory into your project's `components/` folder. Include

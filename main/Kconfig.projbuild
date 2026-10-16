@@ -1,8 +1,44 @@
-menu "Local web OTA"
+menu "OTA application"
+choice OTA_MODE
+    prompt "OTA implementation"
+    default OTA_MODE_WEB
+    help
+        Choose the implementation compiled into the application. To change
+        transport on a running device, build and install firmware for that mode.
+config OTA_MODE_BLE
+    bool "BLE OTA (ESP BLE OTA phone app)"
+    depends on SOC_BLE_SUPPORTED
+    select BT_ENABLED
+    select BT_NIMBLE_ROLE_PERIPHERAL
+config OTA_MODE_WEB
+    bool "Wi-Fi web server OTA (browser)"
+endchoice
+
+if OTA_MODE_BLE
+config OTA_BLE_NAME
+    string "BLE advertising name (1..29 bytes)"
+    default "ESP32-OTA"
+endif
+
+if OTA_MODE_WEB
 config OTA_WIFI_SSID
     string "Device Wi-Fi access point name (1..32 bytes)"
     default "ESP32-OTA"
 config OTA_WIFI_PASSWORD
     string "Device Wi-Fi password (8..63 characters)"
     default "esp32ota123"
+endif
 endmenu
+
+# Project Kconfig is evaluated before component Kconfig. Supply the BLE-mode
+# defaults without selecting choice symbols, which Kconfig does not support.
+choice BT_HOST
+    default BT_NIMBLE_ENABLED if OTA_MODE_BLE
+endchoice
+config BT_NIMBLE_HOST_TASK_STACK_SIZE
+    default 8192 if OTA_MODE_BLE
+config BT_NIMBLE_ATT_PREFERRED_MTU
+    default 512 if OTA_MODE_BLE
+
+config BT_NIMBLE_MAX_CONNECTIONS
+    default 1 if OTA_MODE_BLE

@@ -1,8 +1,30 @@
-# Local web OTA for ESP32-S3
+# Selectable BLE and web OTA for ESP32-S3
 
-The board hosts its own Wi-Fi network and firmware upload page. Connect a phone
-or computer, open the page in a browser, and upload a new application `.bin`.
-No internet connection, phone app, BLE, or second board is required.
+Choose **BLE OTA** or **Wi-Fi web server OTA** at build time. Both run directly
+on the single ESP32-S3 and use the same OTA flash slots.
+
+## Choose the OTA implementation
+
+Run `idf.py menuconfig` and open **OTA application > OTA implementation**:
+
+| Selection | Application enum | Startup source | Component |
+| --- | --- | --- | --- |
+| BLE OTA (ESP BLE OTA phone app) | `BLE_OTA` | `main/main_ble.c` | `OtaBle` |
+| Wi-Fi web server OTA (browser), default | `WebServer_OTA` | `main/main_web.c` | `OtaWeb` |
+
+The menu also shows the selected mode's advertising name or Wi-Fi credentials.
+`main/ota_mode.h` defines the enum. `main/main.c` maps menuconfig to that enum and
+starts the chosen implementation after NVS initialization. Only the selected
+implementation's sources are compiled. The BLE mode uses NimBLE; switching to
+web mode does not initialize Bluetooth.
+
+Changing the enum alone does not compile another transport. To switch modes,
+change menuconfig, build, and install the new application. You can upload the new
+image through the currently running updater; the selected mode starts after reboot.
+
+For BLE setup, phone-app instructions, and custom integration, see
+[OtaBle](components/OtaBle/README.md). The following browser instructions apply
+to **WebServer_OTA**. The project binary remains `build/web_ota_esp.bin` in both modes.
 
 ## First installation
 
@@ -14,7 +36,7 @@ slots in the first 4 MB of flash.
 . /home/mansoor/.espressif/tools/activate_idf_v5.5.1.sh
 idf.py set-target esp32s3
 idf.py menuconfig
-# Local web OTA: configure the Wi-Fi name and password
+# OTA application: select mode and configure its name/credentials
 idf.py build
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
@@ -27,7 +49,7 @@ Close any serial monitor before flashing. No full-chip erase is required.
 ## Update through a browser
 
 1. Power the board and connect to Wi-Fi **ESP32-OTA**.
-2. Enter password **esp32ota123** (change it under `Local web OTA` in menuconfig).
+2. Enter password **esp32ota123** (change it under `OTA application` in menuconfig).
 3. Stay connected if your phone reports that this network has no internet.
 4. Open **http://192.168.4.1/** using HTTP. The actual IP is also printed in the
    serial log. This is a direct address; no captive-portal popup is provided.
@@ -69,8 +91,7 @@ existing router and obtaining an IP address. The server then uses that IP.
 Provide `otadata` and two OTA application partitions large enough for your image.
 See `partitions.csv` and `sdkconfig.defaults`. The server requires the built-in
 ESP-IDF HTTP server, application update, timer, and JSON components, without
-external downloads. The former `OtaBle` source is retained but excluded from the
-current application build; Bluetooth is not used.
+external downloads. In web mode, OtaBle sources and BLE startup are excluded; Bluetooth is not used.
 
 ## HTTP API
 
@@ -111,8 +132,24 @@ This compiles the actual HTTP upload handler against fake HTTP/flash backends wi
 AddressSanitizer and UndefinedBehaviorSanitizer. It covers raw-body streaming,
 wrong content types and sizes, interruptions, timeouts, flash/validation failures,
 boot selection, duplicate uploads, and restart scheduling. Leak detection is
-disabled for the sandbox. `tests/test_component.py` covers the retained BLE
-protocol and is not the web OTA test.
+disabled for the sandbox. `python3 tests/test_component.py` covers the BLE OTA protocol.
 
 The ESP32-S3 firmware build and upload-handler tests pass. Actual Wi-Fi/browser
 upload and reboot still need verification on the board.
+
+## Build isolated configurations (optional)
+
+These presets choose the same modes as menuconfig, with separate configuration
+files and build directories so neither overwrites the other:
+
+```sh
+idf.py -B build-web -DSDKCONFIG="$PWD/sdkconfig.web" \
+  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.web.defaults" build
+idf.py -B build-ble -DSDKCONFIG="$PWD/sdkconfig.ble" \
+  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.ble.defaults" build
+```
+
+The images are `build-web/web_ota_esp.bin` and `build-ble/web_ota_esp.bin`.
+Defaults initialize fresh configurations. For an existing configuration, use
+menuconfig with the corresponding build directory and SDKCONFIG arguments to
+change its selection.
